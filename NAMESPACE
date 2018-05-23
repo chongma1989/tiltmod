@@ -1,0 +1,3 @@
+exportPattern("^[[:alpha:]]+")
+useDynLib(tiltmod)
+importFrom(Rcpp,sourceCpp)
