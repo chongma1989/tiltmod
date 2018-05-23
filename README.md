@@ -1,2 +1,3 @@
-# tiltmod
-Exponential tilting model for reproducible screening of large scale testing problem
+# R Package tiltmod: Exponential tilting model for reproducible screening of large scale testing problem
+
+Develop an exponential tilting method by conditioning on the false discovery rate to tilt a two component mixture of Beta distributions, yielding an tilted mixture model. Use a Boosted EM algorithm to fit a two-component mixture of Beta distributions for p-values or left tail areas of test statistics. The Boosted EM algorithm for the mixture model fitting is built in C++, which is quite fast and stable. The package also includes two utility functions to generate tilted false discovery rates and frequency network. 
