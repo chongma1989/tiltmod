@@ -54,7 +54,3 @@ UBMM <- function(x, w = as.numeric( c()), a = as.numeric( c()), precision = 1e-8
     .Call('_tiltmod_UBMM', PACKAGE = 'tiltmod', x, w, a, precision, MaxIter)
 }
 
-# Register entry points for exported C++ functions
-methods::setLoadAction(function(ns) {
-    .Call('_tiltmod_RcppExport_registerCCallable', PACKAGE = 'tiltmod')
-})

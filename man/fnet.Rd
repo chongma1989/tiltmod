@@ -21,7 +21,7 @@ are discarded with lower relative frequency than it. Default is 0.05.}
 \item{directed}{logical indicating whether the edges are shown in directions. Default 
 is FALSE.}
 
-\item{...}{Arguments to be passed to \code{\link[igraph]{plot}}.}
+\item{...}{Arguments to be passed to \code{\link[igraph]{plot.igraph}}.}
 }
 \value{
 A network plot.

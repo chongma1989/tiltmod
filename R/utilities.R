@@ -528,7 +528,7 @@ tqvalue <- function(xl,xt,
 #' @param max.ew a numeric value. The maximum edge width in the network plot. 
 #' @param directed logical indicating whether the edges are shown in directions. Default 
 #'                 is FALSE.
-#' @param ... Arguments to be passed to \code{\link[igraph]{plot}}.
+#' @param ... Arguments to be passed to \code{\link[igraph]{plot.igraph}}.
 #' 
 #' @return A network plot.
 #' @import plyr,utils,igraph
