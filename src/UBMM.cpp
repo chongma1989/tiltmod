@@ -11,7 +11,7 @@ using namespace Rcpp;
 using namespace boost::math;
 
 //[[Rcpp::plugins("cpp11")]]
-//[[Rcpp::interfaces(r,cpp)]]
+////[[Rcpp::interfaces(r,cpp)]]
 
 //' Fit a two-point mixture of Beta distributions
 //' @param x A vector of numeric values
