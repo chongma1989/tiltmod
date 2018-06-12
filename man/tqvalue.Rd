@@ -4,10 +4,11 @@
 \alias{tqvalue}
 \title{The exponential tilting mixture model}
 \usage{
-tqvalue(xl, xt, w = NULL, a = NULL, precision = 1e-08, MaxIter = 10000,
+tqvalue(xl, xt, w = NULL, a = NULL, precision = 1e-08, MaxIter = 10000L,
   interval = NULL, adjust = TRUE, method = c("m1", "m2"),
   type = c("left tail area", "pvalue"), alpha = 0.9, q = 0.1,
-  ncores = 1, rel.tol = .Machine$double.eps^0.6, tol = 1e-06)
+  ncores = 1, rel.tol = .Machine$double.eps^0.25,
+  tol = .Machine$double.eps^0.5)
 }
 \arguments{
 \item{xl}{The training left-tail areas (or p-values)}

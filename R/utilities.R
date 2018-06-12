@@ -13,10 +13,12 @@
 #' @param xt The testing left-tail areas (or p-values)
 #' @param f The objective function is tilted. If either xl or f is NULL, f is fitted by
 #'    \code{\link[tiltmod]{UBMM}}. Default is NULL.
-#' @param h The conditioning function. If h is NULL, h = -log(f(x)). Default is NULL.
+#' @param h The conditioning function. By default, h = (1-p)/f(x), where 
+#'          \eqn{f(x)=(1-p) \times duniform(x)+p \times dbeta(x,alpha,beta)}.
 #' @param m The constant is used to find the optimal theta such that E(h(x))=m. If m is
 #'    NULL, m = mean(h(xt)). Default is NULL.
-#' @param interval The interval is used to search the optimal theta. Default is (-0.5,10).
+#' @param interval The interval is used to search the optimal theta. Default is (-100L,100L).
+#' @param rel.tol the accuracy used in \code{\link[stats]{integrate}}. 
 #' @param ... Arguments to be passed to \code{\link[stats]{uniroot}}.
 #' 
 #' @return A list includes theta, tau, tilt_tau, tilt_f, tilt_f0, tilt_f1, respectively.
@@ -30,7 +32,7 @@
 #'
 #' @export
 etilt <- function(xl,xt,f=NULL,h=NULL,m=NULL,
-                  interval=NULL,...){
+                  interval=NULL,rel.tol=.Machine$double.eps^0.25,...){
   # fit the mixture model for xl
   if(is.null(f)){
     emnull = UBMM(xl)
@@ -41,7 +43,7 @@ etilt <- function(xl,xt,f=NULL,h=NULL,m=NULL,
   }
 
   # entropy function
-  if(is.null(h)) h <- function(x) -log(f(x))
+  if(is.null(h)) h <- function(x) tau[1]/f(x)
 
   # constant
   if(is.null(m)) m = mean(h(xt))
@@ -52,12 +54,12 @@ etilt <- function(xl,xt,f=NULL,h=NULL,m=NULL,
     denomenator <- function(x,the) exp(the*h(x))*f(x)
 
     return(sapply(theta,function(t)
-      log(integrate(numerator,0,1,t,rel.tol = 1e-5,stop.on.error = FALSE)$value)-
-        log(integrate(denomenator,0,1,t,rel.tol=1e-5,stop.on.error=FALSE)$value)-log(m)))
+      log(integrate(numerator,0,1,t,rel.tol = rel.tol,stop.on.error = FALSE)$value)-
+        log(integrate(denomenator,0,1,t,rel.tol = rel.tol,stop.on.error=FALSE)$value)-log(m)))
   }
 
   # calculate the tilted distribution
-  if(is.null(interval)) interval = c(0.5,10)
+  if(is.null(interval)) interval = c(-100L,100L)
   theta=tryCatch(uniroot(TiltGmean,interval=interval,...)$root,
                  warning=function(w) {
                    warning("The optimal theta is not found! Theta is set 0 without tilting!");
@@ -130,17 +132,18 @@ etilt <- function(xl,xt,f=NULL,h=NULL,m=NULL,
 #' @export
 tqvalue <- function(xl,xt,
                     w=NULL,a=NULL,
-                    precision=1e-8,MaxIter=10000,
+                    precision=1e-8,MaxIter=10000L,
                     interval=NULL,adjust=TRUE,
                     method=c("m1","m2"),
                     type=c("left tail area","pvalue"),
                     alpha=0.9,q=0.1,ncores=1,
-                    rel.tol=.Machine$double.eps^0.6,tol=1e-6){
+                    rel.tol=.Machine$double.eps^0.25,
+                    tol=.Machine$double.eps^0.5){
   # fit the mixture model for xl
   if(is.null(w) && !is.null(a)) 
-    emnull = UBMM(xl,w,precision=precision,MaxIter=MaxIter)
-  if(!is.null(w) && is.null(a)) 
     emnull = UBMM(xl,a,precision=precision,MaxIter=MaxIter)
+  if(!is.null(w) && is.null(a)) 
+    emnull = UBMM(xl,w,precision=precision,MaxIter=MaxIter)
   if(is.null(w) && is.null(a)) 
     emnull = UBMM(xl,precision=precision,MaxIter=MaxIter)
   
@@ -166,8 +169,8 @@ tqvalue <- function(xl,xt,
     denomenator <- function(x,the) exp(the*h(x))*f(x)
     
     return(sapply(theta,function(t)
-      log(integrate(numerator,0,1,t,rel.tol = tol,stop.on.error = FALSE)$value)-
-        log(integrate(denomenator,0,1,t,rel.tol = tol,stop.on.error=FALSE)$value)-log(m)))
+      log(integrate(numerator,0,1,t,rel.tol = rel.tol,stop.on.error = FALSE)$value)-
+        log(integrate(denomenator,0,1,t,rel.tol = rel.tol,stop.on.error=FALSE)$value)-log(m)))
   }
   
   # calculate the tilted distribution
@@ -253,7 +256,7 @@ tqvalue <- function(xl,xt,
     new.f=f
     
     #adjusted tilted mixture model
-    tilt_f111<-function(x) ifelse(x>=lcut,ifelse(x<=rcut,0,tilt_f1(x)-A_t),
+    tilt_f111<-function(x) ifelse(x>=tilt_lcut,ifelse(x<=tilt_rcut,0,tilt_f1(x)-A_t),
                                  tilt_f1(x)-A_t)
     tilt_f11<-function(x) ifelse(tilt_f111(x)<0,0,tilt_f111(x))
     tilt_f10<-function(x) tilt_f(x)-tilt_tau[2]*tilt_f11(x)
@@ -316,6 +319,7 @@ tqvalue <- function(xl,xt,
     new.tilt_f=tilt_f
   }
   
+  eps=.Machine$double.eps^0.75
   cl <- makeCluster(ncores)
   registerDoParallel(cl)
   if(type %in% "left tail area"){
@@ -326,20 +330,20 @@ tqvalue <- function(xl,xt,
                          tryCatch({
                            ## Non-tilting method
                            ## calculate the reflex point to the observed ptvalue
-                           sym.point=tryCatch(uniroot(froot1,xt[i],interval=c(0,1),tol=rel.tol)$root,
+                           sym.point=tryCatch(uniroot(froot1,xt[i],interval=c(0,1),tol=tol)$root,
                                               error=function(e) 1-xt[i])
                            
                            left=min(xt[i],sym.point)  ##denote the left point wrt "pvalue"
                            right=max(xt[i],sym.point) ##denote the right point wrt "pvalue"
                            
                            ##probability of rejection based on untilt.f0 and untilt.fw
-                           if(left < rel.tol && right > 1-rel.tol){
+                           if(left < eps && right > 1-eps){
                              F0_x=new.f0(xt[i])
                              Fw_x=new.f(xt[i])
-                           }else if(left < rel.tol && right < 1-rel.tol){
+                           }else if(left < eps && right < 1-eps){
                              F0_x=2*integrate(new.f0,right,1,stop.on.error = FALSE)$value
                              Fw_x=2*integrate(new.f,right,1,stop.on.error = FALSE)$value
-                           }else if(left > rel.tol && right > 1-rel.tol){
+                           }else if(left > eps && right > 1-eps){
                              F0_x=2*integrate(new.f0,0,left,stop.on.error = FALSE)$value
                              Fw_x=2*integrate(new.f,0,left,stop.on.error = FALSE)$value
                            }else {
@@ -351,19 +355,19 @@ tqvalue <- function(xl,xt,
                            FDR=new.tau[1]*F0_x/Fw_x
                            
                            ## Tilting method
-                           sym.pointt=tryCatch(uniroot(froot2,xt[i],interval=c(0,1),tol=rel.tol)$root,
+                           sym.pointt=tryCatch(uniroot(froot2,xt[i],interval=c(0,1),tol=tol)$root,
                                                error=function(e) 1-xt[i])
                            tleft=min(xt[i],sym.pointt)  ##denote the left point wrt "pvalue"
                            tright=max(xt[i],sym.pointt) ##denote the right point wrt "pvalue"
                            
                            ##probability of rejection based on tilt.f0 and tilt.fw
-                           if(tleft < rel.tol && tright > 1-rel.tol){
+                           if(tleft < eps && tright > 1-eps){
                              tF0_x=new.tilt_f0(xt[i])
                              tFw_x=new.tilt_f(xt[i])
-                           }else if(tleft < rel.tol && tright < 1-rel.tol){
+                           }else if(tleft < eps && tright < 1-eps){
                              tF0_x=2*integrate(new.tilt_f0,tright,1,stop.on.error = FALSE)$value
                              tFw_x=2*integrate(new.tilt_f,tright,1,stop.on.error = FALSE)$value
-                           }else if(tleft > rel.tol && tright < 1-rel.tol){
+                           }else if(tleft > eps && tright < 1-eps){
                              tF0_x=2*integrate(new.tilt_f0,0,tleft,stop.on.error = FALSE)$value
                              tFw_x=2*integrate(new.tilt_f,0,tleft,stop.on.error = FALSE)$value
                            }else {
@@ -388,19 +392,19 @@ tqvalue <- function(xl,xt,
                          tryCatch({
                            ## Non-tilting method
                            ## calculate the reflex point to the observed ptvalue
-                           sym.point=tryCatch(uniroot(froot1,xt[i],interval=c(0,1),tol=rel.tol)$root,
+                           sym.point=tryCatch(uniroot(froot1,xt[i],interval=c(0,1),tol=tol)$root,
                                               error=function(e) 1-xt[i])
                            left=min(xt[i],sym.point)  ##denote the left point wrt "pvalue"
                            right=max(xt[i],sym.point) ##denote the right point wrt "pvalue"
                            
                            ##probability of rejection based on untilt.f0 and untilt.fw
-                           if(left < rel.tol && right > 1-rel.tol){
+                           if(left < eps && right > 1-eps){
                              F0_x=dunif(xt[i])
                              Fw_x=f(xt[i])
-                           }else if(left < rel.tol && right < 1-rel.tol){
+                           }else if(left < eps && right < 1-eps){
                              F0_x=2*(1-right)
                              Fw_x=2*(1-Fw(right))
-                           }else if(left > rel.tol && right > 1-rel.tol){
+                           }else if(left > eps && right > 1-eps){
                              F0_x=2*left
                              Fw_x=2*Fw(left)
                            }else {
@@ -412,19 +416,19 @@ tqvalue <- function(xl,xt,
                            FDR=tau[1]*F0_x/Fw_x
                            
                            ## Tilting method
-                           sym.pointt=tryCatch(uniroot(froot2,xt[i],interval=c(0,1),tol=rel.tol)$root,
+                           sym.pointt=tryCatch(uniroot(froot2,xt[i],interval=c(0,1),tol=tol)$root,
                                                error=function(e) 1-xt[i])
                            tleft=min(xt[i],sym.pointt)  ##denote the left point wrt "pvalue"
                            tright=max(xt[i],sym.pointt) ##denote the right point wrt "pvalue"
                            
                            ##probability of rejection based on tilt.f0 and tilt.f
-                           if(tleft < rel.tol && tright > 1-rel.tol){
+                           if(tleft < eps && tright > 1-eps){
                              tF0_x=tilt_f0(xt[i])
                              tFw_x=tilt_f(xt[i])
-                           }else if(tleft < rel.tol && tright < 1-rel.tol){
+                           }else if(tleft < eps && tright < 1-eps){
                              tF0_x=2*integrate(tilt_f0,tright,1,stop.on.error = FALSE)$value
                              tFw_x=2*integrate(tilt_f,tright,1,stop.on.error = FALSE)$value
-                           }else if(tleft > rel.tol && tright > 1-rel.tol){
+                           }else if(tleft > eps && tright > 1-eps){
                              tF0_x=2*integrate(tilt_f0,0,tleft,stop.on.error = FALSE)$value
                              tFw_x=2*integrate(tilt_f,0,tleft,stop.on.error = FALSE)$value
                            }else {
@@ -453,7 +457,7 @@ tqvalue <- function(xl,xt,
                        .packages = c('foreach','stats')) %dopar%{
                          tryCatch({
                            ## Non-tilting & tilting methods
-                           if(xt[i] < rel.tol || xt[i] > 1-rel.tol){
+                           if(xt[i] < eps || xt[i] > 1-eps){
                              F0_x=new.f0(xt[i])
                              Fw_x=new.f(xt[i])
                              
@@ -483,7 +487,7 @@ tqvalue <- function(xl,xt,
                        .packages = c('foreach','stats')) %dopar%{
                          tryCatch({
                            ## Non-tilting & tilting methods
-                           if(xt[i] < rel.tol || xt[i] > 1-rel.tol){
+                           if(xt[i] < eps || xt[i] > 1-eps){
                              F0_x=dunif(xt[i])
                              Fw_x=f(xt[i])
                              

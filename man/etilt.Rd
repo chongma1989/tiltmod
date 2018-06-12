@@ -4,7 +4,8 @@
 \alias{etilt}
 \title{The exponential tilting function}
 \usage{
-etilt(xl, xt, f = NULL, h = NULL, m = NULL, interval = NULL, ...)
+etilt(xl, xt, f = NULL, h = NULL, m = NULL, interval = NULL,
+  rel.tol = .Machine$double.eps^0.25, ...)
 }
 \arguments{
 \item{xl}{The training left-tail areas (or p-values)}
@@ -14,12 +15,15 @@ etilt(xl, xt, f = NULL, h = NULL, m = NULL, interval = NULL, ...)
 \item{f}{The objective function is tilted. If either xl or f is NULL, f is fitted by
 \code{\link[tiltmod]{UBMM}}. Default is NULL.}
 
-\item{h}{The conditioning function. If h is NULL, h = -log(f(x)). Default is NULL.}
+\item{h}{The conditioning function. By default, h = (1-p)/f(x), where 
+\eqn{f(x)=(1-p) \times duniform(x)+p \times dbeta(x,alpha,beta)}.}
 
 \item{m}{The constant is used to find the optimal theta such that E(h(x))=m. If m is
 NULL, m = mean(h(xt)). Default is NULL.}
 
-\item{interval}{The interval is used to search the optimal theta. Default is (-0.5,10).}
+\item{interval}{The interval is used to search the optimal theta. Default is (-100L,100L).}
+
+\item{rel.tol}{the accuracy used in \code{\link[stats]{integrate}}.}
 
 \item{...}{Arguments to be passed to \code{\link[stats]{uniroot}}.}
 }
