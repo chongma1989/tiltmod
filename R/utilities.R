@@ -548,6 +548,7 @@ tqvalue <- function(xl,xt,
 fnet <- function(x,Simplify=FALSE,threshold=0.05,
                  max.ew=2,directed=FALSE,...){
   if(!is.list(x)) stop("x should be a list of significant cases (genes)!")
+  x=lapply(x, function(t) as.character(t))
   n = length(x)
   xc = count(unlist(x))
   xc = xc[order(xc$freq,decreasing = TRUE),]
