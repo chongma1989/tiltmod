@@ -547,21 +547,19 @@ tqvalue <- function(xl,xt,
 #' @export
 fnet <- function(x,Simplify=FALSE,threshold=0.05,
                  max.ew=2,directed=FALSE,...){
-  ##get the frequency of significant genes and the path
-  ##in each cross-validation
-  ## we get 20 significant genes which FDR <0.1 and 100 "paths"
+  if(!is.list(x)) stop("x should be a list of significant cases (genes)!")
   n = length(x)
   xc = count(unlist(x))
   xc = xc[order(xc$freq,decreasing = TRUE),]
-  colnames(xc) = c("id","freq")
   xc$rfreq = xc$freq/n
   xc$size=7.5+xc$rfreq*10
+  colnames(xc) = c("name","freq","rfreq","size")
   rownames(xc) = NULL
   
   if(Simplify || threshold !=0){
-    unique_id = as.character(with(xc,id[rfreq >= threshold]))
-    x = lapply(x, function(t) x[is.na(match(x,unique_id))])
-    xc = xc[match(xc$id,unique_id),]
+    unique_name = as.character(with(xc,name[rfreq >= threshold]))
+    x = lapply(x, function(t) t[!is.na(match(t,unique_name))])
+    xc = xc[match(xc$name,unique_name),]
   }
   
   ##create edges
@@ -579,7 +577,7 @@ fnet <- function(x,Simplify=FALSE,threshold=0.05,
   
   x_nets <- simplify(x_net,remove.multiple=TRUE,remove.loops=TRUE,
                      edge.attr.comb=c(weight="sum"))
-  V(x_nets)$size <- xc$size[match(V(x_nets)$id,xc$id)]
+  V(x_nets)$size <- xc$size[match(V(x_nets)$name,xc$name)]
   
   ew = rank(E(x_nets)$weight)
   ew = 1+ew/length(ew)*max.ew
