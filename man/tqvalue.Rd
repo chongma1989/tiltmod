@@ -25,7 +25,7 @@ of the uniform and Beta distributions. See \code{\link[tiltmod]{UBMM}}.}
 \item{MaxIter}{The maximum iteration for the EM algorhthm.}
 
 \item{interval}{A vector of two numeric values, which determines the range to
-search the optimal theta. Default is c(-100L,100L).}
+search the optimal theta. Default is c(-1000L,1000L).}
 
 \item{adjust}{Whether or not to do the model adjustment. Default is TRUE.}
 

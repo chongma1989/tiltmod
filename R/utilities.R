@@ -101,7 +101,7 @@ etilt <- function(xl,xt,f=NULL,h=NULL,m=NULL,
 #' @param precision The precision for convergence. Default value is 1e-8.
 #' @param MaxIter The maximum iteration for the EM algorhthm.
 #' @param interval A vector of two numeric values, which determines the range to
-#'                 search the optimal theta. Default is c(-100L,100L).
+#'                 search the optimal theta. Default is c(-1000L,1000L).
 #' @param adjust Whether or not to do the model adjustment. Default is TRUE.
 #' @param method A character chosen from m1, m2. Default is m1.
 #' @param type A character value, chosen from left tail area and pvalue. Default is
@@ -174,7 +174,7 @@ tqvalue <- function(xl,xt,
   }
   
   # calculate the tilted distribution
-  if(is.null(interval)) interval = c(-100,100)
+  if(is.null(interval)) interval = c(-1000L,1000L)
   theta=tryCatch(uniroot(TiltGmean,interval=interval)$root,
                  warning=function(w) {
                    warning("The optimal theta is not found! Theta is set 0 without tilting!");
@@ -231,14 +231,14 @@ tqvalue <- function(xl,xt,
       tryCatch({
         lcut=uniroot(function(x) tau[1]*x/Fw(x)-q,c(1e-10,0.5),tol = tol)$root
         rcut=uniroot(function(x) tau[1]*(1-x)/(1-Fw(x))-q,c(0.5,1-1e-10),tol = tol)$root
-      },error=function(e) stop("The method 2 is not applicable!"))
+      },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A=max(dunif(lcut),dunif(rcut))
       
       #adjusted tilted mixture model
       tryCatch({
         tilt_lcut=uniroot(function(x) tilt_tau[1]*tilt_F0(x)/tilt_F(x)-q,c(1e-10,0.5),tol = tol)$root
         tilt_rcut=uniroot(function(x) tilt_tau[1]*integrate(tilt_f0,x,1)$value/integrate(tilt_f,x,1)$value-q,c(0.5,1-1e-10),tol = tol)$root
-      },error=function(e) stop("The method 2 is not applicable!"))
+      },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A_t=max(tilt_f0(tilt_lcut),tilt_f0(tilt_rcut))
     }
     
@@ -284,13 +284,13 @@ tqvalue <- function(xl,xt,
       ## adjusted uniform-beta mixture model
       tryCatch({
         lcut=uniroot(function(x) tau[1]*x/Fw(x)-q,c(1e-10,0.5),tol = tol)$root
-      },error=function(e) stop("The method 2 is not applicable!"))
+      },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A=dunif(lcut)
       
       #adjusted tilted mixture model
       tryCatch({
         tilt_lcut=uniroot(function(x) tilt_tau[1]*tilt_F0(x)/tilt_F(x)-q,c(1e-10,0.5),tol = tol)$root
-      },error=function(e) stop("The method 2 is not applicable!"))
+      },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A_t=tilt_f0(tilt_lcut)
     }
     
@@ -367,7 +367,7 @@ tqvalue <- function(xl,xt,
                            }else if(tleft < eps && tright < 1-eps){
                              tF0_x=2*integrate(new.tilt_f0,tright,1,stop.on.error = FALSE)$value
                              tFw_x=2*integrate(new.tilt_f,tright,1,stop.on.error = FALSE)$value
-                           }else if(tleft > eps && tright < 1-eps){
+                           }else if(tleft > eps && tright > 1-eps){
                              tF0_x=2*integrate(new.tilt_f0,0,tleft,stop.on.error = FALSE)$value
                              tFw_x=2*integrate(new.tilt_f,0,tleft,stop.on.error = FALSE)$value
                            }else {
