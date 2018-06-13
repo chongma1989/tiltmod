@@ -213,6 +213,7 @@ tqvalue <- function(xl,xt,
   if(length(method) > 1 || !(method %in% c("m1","m2"))) stop("Must choose one method from m1 or m2!")
   if(length(type) > 1 || !(type %in% c("left tail area","pvalue"))) stop("Must choose one type from left tail area and pvalue!")
   
+  eps=.Machine$double.eps^0.75
   if(type %in% "left tail area"){
     if(method %in% "m1"){
       ## adjusted uniform-beta mixture model
@@ -221,23 +222,23 @@ tqvalue <- function(xl,xt,
       A=max(dunif(lcut),dunif(rcut))
       
       ## adjusted tilted mixture model
-      tilt_lcut=uniroot(function(x) tilt_F0(x)-0.5+alpha/2,c(1e-10,0.5),tol = tol)$root
-      tilt_rcut=uniroot(function(x) tilt_F0(x)-0.5-alpha/2,c(0.5,1-1e-10),tol = tol)$root
+      tilt_lcut=uniroot(function(x) tilt_F0(x)-0.5+alpha/2,c(eps,0.5),tol = tol)$root
+      tilt_rcut=uniroot(function(x) tilt_F0(x)-0.5-alpha/2,c(0.5,1-eps),tol = tol)$root
       A_t=max(tilt_f0(tilt_lcut),tilt_f0(tilt_rcut))
     }
     
     if(method %in% "m2"){
       ## adjusted uniform-beta mixture model
       tryCatch({
-        lcut=uniroot(function(x) tau[1]*x/Fw(x)-q,c(1e-10,0.5),tol = tol)$root
-        rcut=uniroot(function(x) tau[1]*(1-x)/(1-Fw(x))-q,c(0.5,1-1e-10),tol = tol)$root
+        lcut=uniroot(function(x) tau[1]*x/Fw(x)-q,c(eps,0.5),tol = tol)$root
+        rcut=uniroot(function(x) tau[1]*(1-x)/(1-Fw(x))-q,c(0.5,1-eps),tol = tol)$root
       },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A=max(dunif(lcut),dunif(rcut))
       
       #adjusted tilted mixture model
       tryCatch({
-        tilt_lcut=uniroot(function(x) tilt_tau[1]*tilt_F0(x)/tilt_F(x)-q,c(1e-10,0.5),tol = tol)$root
-        tilt_rcut=uniroot(function(x) tilt_tau[1]*integrate(tilt_f0,x,1)$value/integrate(tilt_f,x,1)$value-q,c(0.5,1-1e-10),tol = tol)$root
+        tilt_lcut=uniroot(function(x) tilt_tau[1]*tilt_F0(x)/tilt_F(x)-q,c(eps,0.5),tol = tol)$root
+        tilt_rcut=uniroot(function(x) tilt_tau[1]*integrate(tilt_f0,x,1)$value/integrate(tilt_f,x,1)$value-q,c(0.5,1-eps),tol = tol)$root
       },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A_t=max(tilt_f0(tilt_lcut),tilt_f0(tilt_rcut))
     }
@@ -276,20 +277,20 @@ tqvalue <- function(xl,xt,
       A=dunif(lcut)
       
       ## adjusted tilted mixture model
-      tilt_lcut=uniroot(function(x) tilt_F0(x)-1+alpha,c(1e-10,1),tol = tol)$root
+      tilt_lcut=uniroot(function(x) tilt_F0(x)-1+alpha,c(eps,1),tol = tol)$root
       A_t=tilt_f0(tilt_lcut)
     }
     
     if(method %in% "m2"){
       ## adjusted uniform-beta mixture model
       tryCatch({
-        lcut=uniroot(function(x) tau[1]*x/Fw(x)-q,c(1e-10,0.5),tol = tol)$root
+        lcut=uniroot(function(x) tau[1]*x/Fw(x)-q,c(eps,0.5),tol = tol)$root
       },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A=dunif(lcut)
       
       #adjusted tilted mixture model
       tryCatch({
-        tilt_lcut=uniroot(function(x) tilt_tau[1]*tilt_F0(x)/tilt_F(x)-q,c(1e-10,0.5),tol = tol)$root
+        tilt_lcut=uniroot(function(x) tilt_tau[1]*tilt_F0(x)/tilt_F(x)-q,c(eps,0.5),tol = tol)$root
       },error=function(e) stop("The method 2 is not applicable! Try method 1!"))
       A_t=tilt_f0(tilt_lcut)
     }
@@ -319,7 +320,6 @@ tqvalue <- function(xl,xt,
     new.tilt_f=tilt_f
   }
   
-  eps=.Machine$double.eps^0.75
   cl <- makeCluster(ncores)
   registerDoParallel(cl)
   if(type %in% "left tail area"){
@@ -347,8 +347,10 @@ tqvalue <- function(xl,xt,
                              F0_x=2*integrate(new.f0,0,left,stop.on.error = FALSE)$value
                              Fw_x=2*integrate(new.f,0,left,stop.on.error = FALSE)$value
                            }else {
-                             F0_x=1-integrate(new.f0,left,right,stop.on.error = FALSE)$value
-                             Fw_x=1-integrate(new.f,left,right,stop.on.error = FALSE)$value
+                             F0_x=integrate(new.f0,0,left,stop.on.error = FALSE)$value+
+                               integrate(new.f0,right,1,stop.on.error = FALSE)$value
+                             Fw_x=integrate(new.f,0,left,stop.on.error = FALSE)$value+
+                               integrate(new.f,right,1,stop.on.error = FALSE)$value
                            }
                            
                            fdr=new.tau[1]*new.f0(xt[i])/new.f(xt[i])
@@ -408,8 +410,8 @@ tqvalue <- function(xl,xt,
                              F0_x=2*left
                              Fw_x=2*Fw(left)
                            }else {
-                             F0_x=right - left
-                             Fw_x=Fw(right) - Fw(left)
+                             F0_x=left+1-right
+                             Fw_x=Fw(left)+1-Fw(right)
                            }
                            
                            fdr=tau[1]/f(xt[i])
@@ -471,13 +473,14 @@ tqvalue <- function(xl,xt,
                              tFw_x=integrate(new.tilt_f,0,xt[i],stop.on.error = FALSE)$value
                            }
                            
-                           fdr=tau[1]/f(xt[i])
-                           FDR=tau[1]*F0_x/Fw_x
+                           fdr=new.tau[1]*new.f0(xt[i])/new.f(xt[i])
+                           FDR=new.tau[1]*F0_x/Fw_x
                            
-                           tfdr=tilt_tau[1]*tilt_f0(xt[i])/tilt_f(xt[i])
-                           tFDR=tilt_tau[1]*tF0_x/tFw_x
+                           tfdr=new.tilt_tau[1]*new.tilt_f0(xt[i])/new.tilt_f(xt[i])
+                           tFDR=new.tilt_tau[1]*tF0_x/tFw_x
                            
-                           c(fdr=fdr,FDR=FDR,tfdr=tfdr,tFDR=tFDR)
+                           c(fdr=min(abs(fdr),1),FDR=min(abs(FDR),1),
+                             tfdr=min(abs(tfdr),1),tFDR=min(abs(tFDR),1))
                          },
                          error=function(e) NA
                          )
@@ -507,7 +510,8 @@ tqvalue <- function(xl,xt,
                            tfdr=tilt_tau[1]*tilt_f0(xt[i])/tilt_f(xt[i])
                            tFDR=tilt_tau[1]*tF0_x/tFw_x
                            
-                           c(fdr=fdr,FDR=FDR,tfdr=tfdr,tFDR=tFDR)
+                           c(fdr=min(abs(fdr),1),FDR=min(abs(FDR),1),
+                             tfdr=min(abs(tfdr),1),tFDR=min(abs(tFDR),1))
                          },
                          error=function(e) NA
                          )
@@ -583,8 +587,10 @@ fnet <- function(x,Simplify=FALSE,threshold=0.05,
   ew = rank(E(x_nets)$weight)
   ew = 1+ew/length(ew)*max.ew
   
+  fTab=xc[,c("name","freq","rfreq")]
   plot(x_nets,vertex.size=V(x_nets)$size,
        vertex.frame.color="black",
        vertex.label.color="black",
        edge.width=ew,...)
+  return(fTab)
 }
