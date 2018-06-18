@@ -4,4 +4,4 @@ The R package tiltmod develops an exponential tilting method to tilt a mixture o
 
 ## Install tiltmod
 * Download the R package tiltmod in cmd by using `git clone https://github.com/chongma1989/tiltmod.git`. 
-* Install R package in R console by using `install("tiltmod")`. To use install directly, you need attach the R package devtools. 
+* Install R package in R console by using `install.packages("tiltmod",repos=NULL,type="source")`.
